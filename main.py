@@ -14,13 +14,13 @@ genai.configure(api_key="AIzaSyBUXh4bSk9d3pDVvavSSAzK6cuun4RoWTk")  # Replace wi
 model = genai.GenerativeModel("models/gemini-1.5-pro")
 
 # ---- Google Calendar Setup ----
-SERVICE_ACCOUNT_FILE = 'chatbot-464610-ae73e112dbc5.json'
+SERVICE_ACCOUNT_FILE = 'chatbot-464610-8825fc3291ca.json'
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_calendar_service():
     credentials = service_account.Credentials.from_service_account_file(
         SERVICE_ACCOUNT_FILE, scopes=SCOPES
-    )
+    )   
     return build("calendar", "v3", credentials=credentials)
 
 def is_time_available(calendar_id: str, start_time: str, end_time: str) -> bool:
@@ -83,17 +83,32 @@ def format_am_pm(iso_string: str) -> str:
     dt = datetime.fromisoformat(iso_string.replace('+05:30', ''))
     return dt.strftime("%I:%M %p on %d %b %Y")
 
-def get_suggested_slots() -> str:
+def get_suggested_slots(calendar_id: str) -> str:
     ist = pytz.timezone('Asia/Kolkata')
     now = datetime.now(ist)
     base = now.replace(hour=9, minute=0, second=0, microsecond=0)
     suggestions = []
-    for i in range(6):
-        slot_start = base + timedelta(hours=i*2)
-        slot_end = slot_start + timedelta(hours=1)
-        if slot_start > now:
-            suggestions.append(f"{slot_start.strftime('%I:%M %p')} - {slot_end.strftime('%I:%M %p')}")
-    return " " + ", ".join(suggestions)
+
+    for i in range(8):  # Checking from 9 AM to 11 PM
+        slot_start_dt = base + timedelta(hours=i * 2)
+        slot_end_dt = slot_start_dt + timedelta(hours=1)
+
+        # Skip past times
+        if slot_start_dt <= now:
+            continue
+
+        # Format to RFC3339
+        slot_start = slot_start_dt.isoformat()
+        slot_end = slot_end_dt.isoformat()
+
+        if is_time_available(calendar_id, slot_start, slot_end):
+            suggestions.append(f"{slot_start_dt.strftime('%I:%M %p')} - {slot_end_dt.strftime('%I:%M %p')}")
+
+    if suggestions:
+        return ", ".join(suggestions)
+    else:
+        return "No available slots found today."
+
 
 # ---- FastAPI Setup ----
 app = FastAPI()
@@ -106,11 +121,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "POST"])
 async def health_check():
     return {"status": "ok"}
 
-@app.post("/setresponse")
+@app.api_route("/setresponse", methods=["GET", "POST"])
 async def setresponse(userinput: Dict[str, str]):
     input_message = userinput.get("message", "")
     calendar_id = userinput.get("email", "")
@@ -169,7 +184,8 @@ async def setresponse(userinput: Dict[str, str]):
         if not extracted:
             return {
                 "status": "suggest",
-                "suggestions": get_suggested_slots()
+                "suggestions": get_suggested_slots(calendar_id)
+
             }
 
     except Exception as e:
@@ -187,7 +203,7 @@ async def setresponse(userinput: Dict[str, str]):
     if start == "unknown":
         return {
             "status": "suggest",
-            "suggestions": get_suggested_slots()
+            "suggestions": get_suggested_slots(calendar_id)
         }
 
     if end == "unknown":
@@ -216,7 +232,7 @@ async def setresponse(userinput: Dict[str, str]):
         return {
             "status": "error",
             "ERROR": "Cannot book. Time slot has already passed.",
-            "suggestions": get_suggested_slots()
+            "suggestions": get_suggested_slots(calendar_id)
         }
 
     try:
@@ -224,7 +240,7 @@ async def setresponse(userinput: Dict[str, str]):
             return {
                 "status": "error",
                 "ERROR": "Cannot book. Time slot is already full.",
-                "suggestions": get_suggested_slots()
+                "suggestions":get_suggested_slots(calendar_id)
             }
     except Exception as e:
         return {
