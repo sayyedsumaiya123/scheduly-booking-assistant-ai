@@ -6,3 +6,4 @@ google-auth-oauthlib
 google-generativeai
 pydantic
 python-dotenv
+pytz
