@@ -3,7 +3,7 @@ import streamlit as st
 from datetime import datetime, timedelta
 import base64
 import time
-BACKEND_URL = "https://scheduly-api-backend.onrender.com"
+BACKEND_URL = "https://scheduly-booking-assistant-ai.onrender.com"
 
 
 # ---- Page Configuration ----
