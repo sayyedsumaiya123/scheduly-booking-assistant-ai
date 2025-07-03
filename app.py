@@ -3,6 +3,8 @@ import streamlit as st
 from datetime import datetime, timedelta
 import base64
 import time
+BACKEND_URL = "https://scheduly-api-backend.onrender.com"
+
 
 # ---- Page Configuration ----
 st.set_page_config(layout="wide", page_title="Scheduly - Booking Assistant", page_icon="🗓️")
@@ -62,14 +64,15 @@ def handle_input():
         with st.spinner("Processing your request..."):
             try:
                 response = requests.post(
-                    "http://127.0.0.1:8000/setresponse",
-                    json={
-                        "message": user_input,
-                        "email": st.session_state.user_email  # 🆕 Pass email
-                    },
-                    timeout=30,
-                    headers={'Content-Type': 'application/json'}
-                )
+                f"{BACKEND_URL}/setresponse",
+                json={
+                    "message": user_input,
+                    "email": st.session_state.user_email
+                },
+                timeout=30,
+                headers={'Content-Type': 'application/json'}
+            )
+
                 response.raise_for_status()
                 json_response = response.json()
                 
@@ -105,7 +108,7 @@ st.markdown("""<style> ... (your entire CSS block unchanged) ... </style>""", un
 # ---- Backend Status Check ----
 def check_backend_status():
     try:
-        response = requests.get("http://127.0.0.1:8000/health", timeout=5)
+        response = requests.get(f"{BACKEND_URL}/health", timeout=5)
         return response.status_code == 200
     except:
         return False
@@ -276,7 +279,7 @@ st.markdown("""
 # ---- Backend Status Check ----
 def check_backend_status():
     try:
-        response = requests.get("http://127.0.0.1:8000/health", timeout=5)
+        response = requests.get(f"{BACKEND_URL}/health/health", timeout=5)
         return response.status_code == 200
     except:
         return False
